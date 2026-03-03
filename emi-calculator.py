@@ -49,6 +49,42 @@ def calculate_totals(emi, principal, months):
 
     return total_payment, total_interest
 
+
+##
+
+def generate_schedule(principal, annual_rate, months, emi):
+    schedule = []
+
+    monthly_rate = annual_rate / Decimal("12") / Decimal("100")
+    remaining_balance = principal.quantize(Decimal("0.01"))
+
+    for month in range(1, months + 1):
+
+        # Calculate monthly interest (rounded like real banking systems)
+        interest = (remaining_balance * monthly_rate).quantize(Decimal("0.01"))
+
+        # Normal principal calculation
+        principal_component = (emi - interest).quantize(Decimal("0.01"))
+
+        # Final installment adjustment
+        if month == months:
+            principal_component = remaining_balance
+            emi_adjusted = (principal_component + interest).quantize(Decimal("0.01"))
+            remaining_balance = Decimal("0.00")
+        else:
+            emi_adjusted = emi.quantize(Decimal("0.01"))
+            remaining_balance = (remaining_balance - principal_component).quantize(Decimal("0.01"))
+
+        schedule.append({
+            "month": month,
+            "emi": emi_adjusted,
+            "interest": interest,
+            "principal": principal_component,
+            "balance": remaining_balance
+        })
+
+    return schedule
+
 ## Add Main Function
 
 def main():
@@ -56,8 +92,27 @@ def main():
 
     emi = calculate_emi(principal, annual_rate, months)
 
-    total_payment, total_interest = calculate_totals(emi, principal, months)
+    # generate schedule
+    schedule = generate_schedule(principal, annual_rate, months, emi)
+
+    #calculate totals from schedule
+    total_payment = sum(row["emi"] for row in schedule)
+    total_interest = sum(row["interest"] for row in schedule)
+
+    #printing first  3 rows and last row
+    print("\nAmortization Schedule (Preview)")
+    print("-" * 60)
+    print("Month | EMI | Interest | Principal | Balance")
+
+    for row in schedule[:3]:
+        print(f"{row['month']} | ₹{row['emi']} | ₹{row['interest']} | ₹{row['principal']} | ₹{row['balance']}")
+
+    print("...")
+
+    last_row = schedule[-1]
+    print(f"{last_row['month']} | ₹{last_row['emi']} | ₹{last_row['interest']} | ₹{last_row['principal']} | ₹{last_row['balance']}")
     
+
     formatted_emi = format(emi.quantize(Decimal("0.01")), ",")
     formatted_interest = format(total_interest.quantize(Decimal("0.01")), ",")
     formatted_payment = format(total_payment.quantize(Decimal("0.01")), ",")
